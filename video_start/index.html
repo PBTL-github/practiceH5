@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>video-enter</title>
+    <style>
+      * {
+        padding: 0;
+        margin: 0;
+        box-sizing: border-box;
+      }
+      #canvas {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+      }
+      .contain {
+        position: relative;
+        width: 100vw;
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10;
+      }
+      .contain > h2 {
+        font-size: 12rem;
+        font-weight: bolder;
+        color: transparent;
+        text-shadow: 0 0 16px rgba(0, 0, 0, 0.4);
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="canvas"></canvas>
+    <div class="contain">
+      <h2>VIDEO</h2>
+    </div>
+  </body>
+  <script>
+    /** @type {HTMLCanvasElement} */
+    const canvas = document.querySelector("#canvas");
+    const ctx = canvas.getContext("2d");
+
+    const w = (canvas.style.width = canvas.clientWidth);
+    const h = (canvas.style.height = canvas.clientHeight);
+
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, w, h);
+
+    const canvasImageData = ctx.getImageData(0, 0, w, h);
+    const CanvasRgba = canvasImageData.data;
+
+    function randomColor() {
+      for (let i = 0; i < CanvasRgba.length; i += 4) {
+        // 生成灰色到白色
+        const color = Math.floor(Math.random() * 255) + 50;
+        CanvasRgba[i] = color;
+        CanvasRgba[i + 1] = color;
+        CanvasRgba[i + 2] = color;
+      }
+      ctx.putImageData(canvasImageData, 0, 0);
+      setTimeout(randomColor, 10);
+    }
+    randomColor();
+  </script>
+</html>
