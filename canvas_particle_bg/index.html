@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>画布粒子背景</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      #box {
+        width: 100vw;
+        height: 100vh;
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 0;
+      }
+
+      #box > #canvas {
+        background-color: rgba(50, 64, 87, 1);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="box">
+      <canvas id="canvas"></canvas>
+    </div>
+  </body>
+  <script>
+    /** @type {HTMLCanvasElement} */
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+
+    let windowWidth = window.innerWidth;
+    let windowHeight = window.innerHeight;
+
+    let dotsCount = 50;
+    let radius = 1;
+    let fillStyle = "white";
+    let lineWidth = radius * 2;
+    let maxConnection = 120;
+    let mouseConnect = 90;
+
+    /** @type {Array<Dots>} */
+    let dots = [];
+    let AnimationFrame = null;
+    let mouseX = null;
+    let mouseY = null;
+
+    ////////////////// 粒子类 /////////////////////////
+    class Dots {
+      /**
+       * @description: 初始化粒子坐标，速度，跟随状态
+       * @param {number} x
+       * @param {number} y
+       * @param { CanvasRenderingContext2D } canvasCtx2d
+       * @return {void}
+       */
+      constructor(x, y, canvasCtx2d) {
+        /** @type {CanvasRenderingContext2D} */
+        this.canvasCtx2d = canvasCtx2d;
+        /** @type {number} */
+        this.x = x;
+        /** @type {number} */
+        this.y = y;
+        /** @type {number} */
+        this.speedX = Math.random() * 2 - 1;
+        /** @type {number} */
+        this.speedY = Math.random() * 2 - 1;
+        /** @type {boolean} */
+        this.follow = false;
+      }
+
+      /**
+       * @description: 绘制点
+       * @return {*}
+       */
+      draw() {
+        this.canvasCtx2d.beginPath();
+        this.canvasCtx2d.arc(this.x, this.y, radius, 0, 2 * Math.PI);
+        this.canvasCtx2d.fill();
+        this.canvasCtx2d.closePath();
+      }
+
+      /**
+       * @description: 点进行移动
+       * @return {*}
+       */
+      move() {
+        this.speedX *= this.x > windowWidth || this.x < 0 ? -1 : 1;
+        this.speedY *= this.y > windowHeight || this.y < 0 ? -1 : 1;
+        this.x += this.speedX;
+        this.y += this.speedY;
+        if (this.speedX >= 1) this.speedX--;
+        if (this.speedX <= -1) this.speedX++;
+        if (this.speedY >= 1) this.speedY--;
+        if (this.speedY <= -1) this.speedY++;
+        this.isConnect();
+        this.mouseConnect();
+        this.draw();
+      }
+
+      /**
+       * @description: 鼠标附近划分牵引区
+       * @return {*}
+       */
+      isConnect() {
+        if (!mouseX && !mouseY) return;
+        let LengthX = mouseX - this.x;
+        let LengthY = mouseY - this.y;
+        const distance = Math.sqrt(LengthX ** 2 + LengthY ** 2);
+        if (distance <= mouseConnect) {
+          this.follow = true;
+        } else if (this.follow && distance > mouseConnect && distance <= mouseConnect + 5) {
+          let proportion = mouseConnect / distance;
+          LengthX *= proportion;
+          LengthY *= proportion;
+          this.x = mouseX - LengthX;
+          this.y = mouseY - LengthY;
+        } else this.follow = false;
+      }
+
+      /**
+       * @description: 鼠标与附近的点进行链接
+       * @return {*}
+       */
+      mouseConnect() {
+        if (mouseX && mouseY) {
+          let LengthX = mouseX - this.x;
+          let LengthY = mouseY - this.y;
+          const distance = Math.sqrt(LengthX ** 2 + LengthY ** 2);
+          if (distance <= maxConnection) {
+            let opacity = (1 - distance / maxConnection) * 0.5;
+            this.canvasCtx2d.strokeStyle = `rgba(255, 255, 255, ${opacity})`;
+            this.canvasCtx2d.beginPath();
+            this.canvasCtx2d.moveTo(this.x, this.y);
+            this.canvasCtx2d.lineTo(mouseX, mouseY);
+            this.canvasCtx2d.stroke();
+            this.canvasCtx2d.closePath();
+          }
+        }
+      }
+
+      /**
+       * @description: 鼠标点击弹射
+       * @return {*}
+       */
+      shootOFF() {
+        let LengthX = mouseX - this.x;
+        let LengthY = mouseY - this.y;
+        const distance = Math.sqrt(LengthX ** 2 + LengthY ** 2);
+        if (distance >= maxConnection) return;
+        const rate = 1 - distance / maxConnection;
+        this.speedX = (40 * rate * -LengthX) / distance;
+        this.speedY = (40 * rate * -LengthY) / distance;
+      }
+    }
+
+    /**
+     * @description: 初始化画布, 生成粒子
+     * @param {number} dotsCount
+     * @return {void}
+     */
+    function initDots(dotsCount) {
+      ctx.fillStyle = fillStyle;
+      ctx.lineWidth = lineWidth;
+      for (let i = 0; i < dotsCount; i++) {
+        const x = Math.floor(Math.random() * windowWidth);
+        const y = Math.floor(Math.random() * windowHeight);
+        const dot = new Dots(x, y, ctx);
+        dot.draw();
+        dots.push(dot);
+      }
+    }
+
+    /**
+     * @description: 加载画布动画
+     * @return {*}
+     */
+    function moveDots() {
+      ctx.clearRect(0, 0, windowWidth, windowHeight);
+      dots.forEach((dot) => {
+        dot.move();
+      });
+      // for (let i = 0; i < dots.length; i++) {
+      //   for (let j = i; j < dots.length; j++) {
+      //     const distance = Math.sqrt((dots[i].x - dots[j].x) ** 2 + (dots[i].y - dots[j].y) ** 2);
+      //     if (distance <= maxConnection) {
+      //       let opacity = (1 - distance / maxConnection) * 0.5;
+      //       ctx.strokeStyle = `rgba(255, 255, 255, ${opacity})`;
+      //       ctx.beginPath();
+      //       ctx.moveTo(dots[i].x, dots[i].y);
+      //       ctx.lineTo(dots[j].x, dots[j].y);
+      //       ctx.stroke();
+      //       ctx.closePath();
+      //     }
+      //   }
+      // }
+      AnimationFrame = window.requestAnimationFrame(moveDots);
+    }
+
+    /**
+     * @description: 初始化画布大小
+     * @return {*}
+     */
+    function resetCanvasSize() {
+      windowWidth = window.innerWidth;
+      windowHeight = window.innerHeight;
+      canvas.width = windowWidth;
+      canvas.height = windowHeight;
+      ctx.clearRect(0, 0, windowWidth, windowHeight);
+      dots.splice(0, dots.length);
+      if (AnimationFrame) {
+        window.cancelAnimationFrame(AnimationFrame);
+      }
+      initDots(dotsCount);
+      moveDots();
+    }
+
+    /**
+     * @description:
+     * @param {MouseEvent} e
+     * @return {void}
+     */
+    function mouseMove(e) {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+    }
+
+    function mouseOut() {
+      mouseX = null;
+      mouseY = null;
+    }
+
+    function mouseOnclick() {
+      dots.forEach((dot) => {
+        dot.shootOFF();
+      });
+    }
+
+    document.onmousemove = mouseMove;
+    document.onmouseout = mouseOut;
+    window.onresize = resetCanvasSize;
+    document.onclick = mouseOnclick;
+
+    // initDots(dotsCount);
+    resetCanvasSize();
+    // moveDots();
+  </script>
+</html>

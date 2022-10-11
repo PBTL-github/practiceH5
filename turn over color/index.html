@@ -15,10 +15,6 @@
       #canvas {
         border: solid 2px;
         background-color: #fff;
-        /* position: absolute; */
-        /* width: 100%;
-        height: 100%; */
-        /* z-index: 10; */
       }
 
       #image {
@@ -28,7 +24,7 @@
   </head>
   <body>
     <img src="妖梦.jpg" id="image" />
-    <canvas id="canvas" width="1100" height="700"></canvas>
+    <canvas id="canvas"></canvas>
   </body>
   <script>
     /** @type {HTMLCanvasElement} */
@@ -36,9 +32,15 @@
     const ctx = canvas.getContext("2d");
     /** @type {CanvasImageSource} */
     const image = document.getElementById("image");
-    image.setAttribute("crossOrigin", "");
-    image.onload = function () {
-      ctx.drawImage(image, 0, 0);
+    /**
+     * img 图片本地载入canvas， getImageData() 被污染, 属于图片跨域问题
+     * 解决方案： crossOrigin = ""， 然后用http-server启动
+     */
+    image.crossOrigin = "";
+    image.onload = async () => {
+      canvas.setAttribute("width", image.clientWidth);
+      canvas.setAttribute("height", image.clientHeight);
+      ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
       const ctxData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       const ctxRgba = ctxData.data;
       for (var i = 0; i < ctxRgba.length; i += 4) {
